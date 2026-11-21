@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RSG Secret Santa</title>
 <meta name="theme-color" content="#0c0b0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%81%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
@@ -85,6 +86,7 @@ header{padding-top:34px}
 .linkbtn{background:none;border:0;color:var(--rose);font:inherit;cursor:pointer;padding:0;border-bottom:1px dashed rgba(217,103,122,.5)}
 .iconbtn{width:36px;height:34px;border-radius:var(--cut-r);color:var(--text);cursor:pointer;display:grid;place-items:center;padding:0}
 .iconbtn svg{width:16px;height:16px}
+.iconbtn.lit{color:var(--gold);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 16px -4px rgba(232,180,95,.7);border-color:rgba(232,180,95,.4)}
 .banner{margin:14px auto 0;max-width:520px;padding:8px 12px;border-radius:var(--cut);text-align:center;font-family:var(--label);font-size:12px;letter-spacing:.12em;color:var(--gold);
   background:rgba(232,180,95,.08);border:1px solid rgba(232,180,95,.35)}
 
@@ -279,7 +281,8 @@ label input,label select,label textarea{margin-top:6px;font-family:var(--body);l
     <div class="hud">
       <div class="pill glass" id="countdown"></div>
       <div class="pill glass" id="who" hidden></div>
-      <button class="iconbtn glass" id="mute" title="Sound on/off"></button>
+      <button class="iconbtn glass" id="music" title="Music on/off"></button>
+      <button class="iconbtn glass" id="mute" title="Sound effects on/off"></button>
     </div>
   </header>
   <div id="banner"></div>
@@ -450,6 +453,128 @@ const sfx = {
   win: () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, .22, 'square', .04, i * .09)),
   join: () => [392, 523, 659].forEach((f, i) => tone(f, .12, 'triangle', .07, i * .07)),
 };
+/* ---------- chill lo-fi Christmas loop (Jingle Bells, public domain, + an original bridge) ---------- */
+const music = { on: store.get('rsg-music') !== false, playing: false, timer: null, bus: null, next: 0, step: 0, duck: 1 };
+const BPM = 82, BEAT = 60 / BPM;
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+// melody: [midi or 0 for rest, beats]
+const MEL = [
+  [76,1],[76,1],[76,2], [76,1],[76,1],[76,2], [76,1],[79,1],[72,1.5],[74,.5], [76,4],
+  [77,1],[77,1],[77,1.5],[77,.5], [77,1],[76,1],[76,1],[76,.5],[76,.5], [76,1],[74,1],[74,1],[76,1], [74,2],[79,2],
+  [76,1],[76,1],[76,2], [76,1],[76,1],[76,2], [76,1],[79,1],[72,1.5],[74,.5], [76,4],
+  [77,1],[77,1],[77,1.5],[77,.5], [77,1],[76,1],[76,1],[76,.5],[76,.5], [79,1],[79,1],[77,1],[74,1], [72,4],
+  [0,32],
+];
+const CH = { // chord voicings (midi)
+  C: [48, 64, 67, 71, 74], Am: [45, 64, 67, 72, 76], F: [41, 64, 69, 72, 76], Dm: [50, 65, 69, 72, 76],
+  G: [43, 65, 69, 71, 74], Em: [40, 62, 67, 71, 74], C6: [48, 64, 67, 69, 74], Gs: [43, 65, 67, 72, 74],
+};
+const BARS = ['C','Am','C','C6','F','C','Dm','G','C','Am','C','C6','F','C','G','C',  'F','Em','Dm','C','F','Em','Dm','Gs'];
+let noiseBuf = null;
+function musicBus(){
+  const a = ac();
+  if (music.bus) return music.bus;
+  const out = a.createGain(); out.gain.value = 0;
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = .4;
+  const dly = a.createDelay(1); dly.delayTime.value = BEAT * .75;
+  const fb = a.createGain(); fb.gain.value = .28;
+  const wet = a.createGain(); wet.gain.value = .22;
+  const dlp = a.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 1800;
+  lp.connect(out); lp.connect(dly); dly.connect(dlp); dlp.connect(fb); fb.connect(dly); dlp.connect(wet); wet.connect(out);
+  out.connect(a.destination);
+  noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+  const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  music.bus = { out, in: lp };
+  return music.bus;
+}
+function mNote(t, m, dur, kind){
+  const a = ac(), bus = music.bus.in;
+  const g = a.createGain(); g.connect(bus);
+  const o = a.createOscillator(), f = mtof(m);
+  if (kind === 'lead') {
+    o.type = 'triangle'; o.frequency.value = f;
+    const vib = a.createOscillator(), vg = a.createGain(); vib.frequency.value = 5; vg.gain.value = f * .004; vib.connect(vg).connect(o.frequency);
+    vib.start(t); vib.stop(t + dur + .6);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.13, t + .03); g.gain.exponentialRampToValueAtTime(.06, t + dur * .8); g.gain.exponentialRampToValueAtTime(.0001, t + dur + .5);
+  } else if (kind === 'keys') {
+    o.type = 'sine'; o.frequency.value = f;
+    const o2 = a.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2.001; const g2 = a.createGain(); g2.gain.value = .25; o2.connect(g2).connect(g);
+    o2.start(t); o2.stop(t + dur + .1);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.045, t + .01); g.gain.exponentialRampToValueAtTime(.012, t + dur * .7); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  } else { // bass
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.16, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  }
+  o.connect(g); o.start(t); o.stop(t + dur + .6);
+}
+function mNoise(t, dur, freq, type, vol){
+  const a = ac(), s = a.createBufferSource(); s.buffer = noiseBuf;
+  const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = .8;
+  const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(f).connect(g).connect(music.bus.in); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+}
+function mKick(t){
+  const a = ac(), o = a.createOscillator(), g = a.createGain();
+  o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(42, t + .18);
+  g.gain.setValueAtTime(.22, t); g.gain.exponentialRampToValueAtTime(.0001, t + .3);
+  o.connect(g).connect(music.bus.in); o.start(t); o.stop(t + .32);
+}
+const TOTAL_BEATS = BARS.length * 4;
+const melStarts = (() => { let b = 0; return MEL.map(([m, d]) => { const s = b; b += d; return [s, m, d]; }); })();
+function scheduleBeat(beat, t){
+  const bar = Math.floor(beat / 4), inBar = beat % 4, ch = CH[BARS[bar]];
+  const sw = BEAT * .5 * 1.16;               // lazy swing on the off-beat
+  // drums: soft kick, brushed snare, sleigh bells
+  if (inBar === 0 || (inBar === 2 && bar % 2)) mKick(t);
+  if (inBar === 1 || inBar === 3) mNoise(t, .18, 2200, 'bandpass', .05);
+  mNoise(t, .07, 7500, 'highpass', .028); mNoise(t + sw, .05, 8000, 'highpass', .018);
+  // bass
+  if (inBar === 0) mNote(t, ch[0], BEAT * 1.8, 'bass');
+  if (inBar === 2) mNote(t, ch[0] + 7, BEAT * 1.5, 'bass');
+  // keys: chord on 1, a lazy re-hit on the "and" of 2, arpeggio in the bridge
+  if (inBar === 0) ch.slice(1).forEach((m, i) => mNote(t + i * .018, m, BEAT * 1.6, 'keys'));
+  if (inBar === 1) ch.slice(2).forEach((m, i) => mNote(t + sw + i * .02, m, BEAT * 1.4, 'keys'));
+  if (bar >= 16) { const arp = ch.slice(1); mNote(t, arp[(beat * 2) % arp.length] + 12, BEAT * .9, 'keys'); mNote(t + sw, arp[(beat * 2 + 1) % arp.length] + 12, BEAT * .7, 'keys'); }
+  // melody notes starting inside this beat
+  for (const [s, m, d] of melStarts) if (m && s >= beat && s < beat + 1) mNote(t + (s - beat) * BEAT + (Math.random() - .5) * .012, m, d * BEAT * .92, 'lead');
+  // vinyl crackle
+  if (Math.random() < .5) mNoise(t + Math.random() * BEAT, .012, 3000, 'highpass', .02 + Math.random() * .03);
+}
+function musicStart(){
+  if (music.playing || muted === undefined) return;
+  try {
+    const a = ac(); musicBus();
+    music.playing = true; music.next = a.currentTime + .15; music.step = 0;
+    music.bus.out.gain.cancelScheduledValues(a.currentTime);
+    music.bus.out.gain.setValueAtTime(music.bus.out.gain.value, a.currentTime);
+    music.bus.out.gain.linearRampToValueAtTime(.9 * music.duck, a.currentTime + 2.5);
+    music.timer = setInterval(() => {
+      while (music.next < a.currentTime + .35) { scheduleBeat(music.step % TOTAL_BEATS, music.next); music.next += BEAT; music.step++; }
+    }, 60);
+  } catch (e) { console.error(e); }
+}
+function musicStop(){
+  if (!music.playing) return;
+  music.playing = false; clearInterval(music.timer);
+  const a = ac(); music.bus.out.gain.cancelScheduledValues(a.currentTime);
+  music.bus.out.gain.setValueAtTime(music.bus.out.gain.value, a.currentTime); music.bus.out.gain.linearRampToValueAtTime(0, a.currentTime + .6);
+}
+function musicDuck(on){
+  music.duck = on ? .3 : 1;
+  if (!music.playing) return;
+  const a = ac(), g = music.bus.out.gain; g.cancelScheduledValues(a.currentTime); g.setValueAtTime(g.value, a.currentTime); g.linearRampToValueAtTime(.9 * music.duck, a.currentTime + .8);
+}
+const ICON_MUSIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+const ICON_MUSIC_OFF = ICON_MUSIC.replace('</svg>', '<path d="M3 3l18 18" stroke="#d9677a"/></svg>');
+const musicBtn = $('#music');
+const paintMusic = () => { musicBtn.innerHTML = music.on ? ICON_MUSIC : ICON_MUSIC_OFF; musicBtn.classList.toggle('lit', music.on && music.playing); };
+musicBtn.onclick = e => {
+  e.stopPropagation();
+  music.on = !music.on; store.set('rsg-music', music.on);
+  music.on ? musicStart() : musicStop(); paintMusic();
+};
+addEventListener('pointerdown', e => { if (e.target.closest('#music')) return; if (music.on && !music.playing) { musicStart(); paintMusic(); } });
+paintMusic();
 const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
 const muteBtn = $('#mute');
@@ -708,6 +833,7 @@ async function startSpin(){
   const c = $('#wheel');
   try { await document.fonts.load('30px "Silkscreen"'); await document.fonts.load('24px "Press Start 2P"'); } catch {}
   drawWheel(c, segs);
+  musicDuck(true);
   for (const n of [3, 2, 1]) { if (S.screen !== 'spin') return; $('#cd').innerHTML = `<span>${n}</span>`; sfx.beep(false); await sleep(900); }
   if (S.screen !== 'spin') return;
   $('#cd').innerHTML = ''; sfx.beep(true);
@@ -724,6 +850,7 @@ async function startSpin(){
   burst(r.left + r.width / 2, r.top + r.height * 0.12);
   $('#spinMsg').innerHTML = `<b style="color:${COLOR[S.giftee]};font-size:20px;text-shadow:0 0 18px currentColor">${esc(NAME[S.giftee].toUpperCase())}!</b>`;
   await sleep(1600);
+  musicDuck(false);
   if (S.screen === 'spin') renderResult();
 }
 function drawWheel(c, segs){
