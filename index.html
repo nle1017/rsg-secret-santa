@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RSG Secret Santa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b16;--panel:#0f1830;--panel2:#16213f;--line:#2b3b6b;
+  --green:#39ff6a;--red:#ff3b5c;--gold:#ffd34d;--ice:#bfe9ff;--text:#e8f4ff;--dim:#93a7cc;
+  --cap:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:radial-gradient(ellipse at 50% -10%,#1b2a5e 0%,#0c1430 40%,var(--bg) 75%) fixed,var(--bg);
+  color:var(--text);font-family:'VT323',monospace;font-size:22px;line-height:1.25;
+}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px)}
+#snow{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:40;image-rendering:pixelated}
+#app{position:relative;z-index:10;max-width:800px;margin:0 auto;padding:12px 16px 190px}
+header{text-align:center;padding:14px 0 4px}
+.logo{font-family:'Press Start 2P',monospace;font-size:clamp(15px,4.4vw,30px);line-height:1.5;letter-spacing:2px;color:var(--green);
+  text-shadow:0 0 10px rgba(57,255,106,.6),3px 3px 0 #0a5a22}
+.logo .r{color:var(--red);text-shadow:0 0 10px rgba(255,59,92,.6),3px 3px 0 #6b0f20}
+.sub{font-family:'Press Start 2P',monospace;font-size:clamp(9px,2.2vw,12px);color:var(--gold);margin-top:6px;letter-spacing:3px}
+.iq{display:inline-block;margin-left:8px;color:var(--ice);animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.hud{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 18px;margin-top:12px;font-size:20px}
+.countdown{color:var(--ice)}
+.countdown b{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--gold);letter-spacing:1px}
+.who{color:var(--dim)}
+.who b{color:var(--text)}
+.linkbtn{background:none;border:0;color:var(--ice);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.icon{background:var(--panel2);border:2px solid var(--line);color:var(--text);font-size:18px;width:38px;height:34px;cursor:pointer}
+.banner{background:#3a2a00;border:2px dashed var(--gold);color:var(--gold);text-align:center;padding:6px;margin:10px 0;font-size:19px}
+
+.panel{position:relative;background:var(--panel);border:3px solid var(--line);
+  box-shadow:0 0 0 3px #050810,6px 6px 0 3px #050810;padding:18px;margin:calc(var(--cap) + 22px) 0 18px}
+.panel::before{content:'';position:absolute;left:-7px;right:-7px;top:calc(-1 * var(--cap) - 3px);height:calc(var(--cap) + 4px);pointer-events:none;
+  background:
+    radial-gradient(13px 100% at 50% 100%,#f2f9ff 97%,transparent 100%) 0 0/26px 100% repeat-x,
+    radial-gradient(9px 70% at 50% 100%,#f2f9ff 97%,transparent 100%) 13px 0/26px 100% repeat-x;
+  filter:drop-shadow(0 2px 0 #9cc7e6);transition:height 1s,top 1s}
+.panel.gold{border-color:#6e5a12}
+h2{font-family:'Press Start 2P',monospace;font-size:13px;color:var(--ice);margin:0 0 12px;letter-spacing:1px;line-height:1.6}
+.dim{color:var(--dim)}
+.small{font-size:18px}
+.center{text-align:center}
+.narrow{max-width:460px;margin-left:auto;margin-right:auto}
+.row{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+.row.center{justify-content:center}
+.badge{display:inline-block;background:var(--gold);color:#1a1300;font-family:'Press Start 2P',monospace;font-size:11px;padding:4px 8px;box-shadow:2px 2px 0 #050810}
+
+.btn{font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#04140a;background:var(--green);border:0;padding:14px 18px;cursor:pointer;
+  box-shadow:0 4px 0 #0f7a33,0 0 18px rgba(57,255,106,.35);letter-spacing:1px}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0f7a33}
+.btn.red{background:var(--red);color:#fff;box-shadow:0 4px 0 #8a1428,0 0 18px rgba(255,59,92,.35)}
+.btn.ghost{background:transparent;color:var(--ice);border:2px solid var(--line);box-shadow:none}
+.btn.ghost:hover{border-color:var(--ice)}
+.btn.small{font-size:10px;padding:10px 12px}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none;transform:none}
+
+.players{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:8px}
+@media(min-width:660px){.players{grid-template-columns:repeat(4,1fr)}}
+.pcard{background:var(--panel2);border:3px solid var(--line);padding:22px 8px 14px;text-align:center;color:var(--text);font:inherit}
+button.pcard{cursor:pointer}
+button.pcard:hover{border-color:var(--green);box-shadow:0 0 14px rgba(57,255,106,.35)}
+.pcard.ready{border-color:var(--green);box-shadow:0 0 14px rgba(57,255,106,.3)}
+.pcard.me{outline:2px dashed var(--gold);outline-offset:3px}
+.avatar{width:62px;height:62px;margin:6px auto 12px;display:grid;place-items:center;font-family:'Press Start 2P',monospace;font-size:24px;color:#050810;
+  box-shadow:4px 4px 0 #050810;position:relative}
+.avatar::before{content:'';position:absolute;top:-20px;left:12px;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:22px solid var(--red);transform:rotate(14deg)}
+.avatar::after{content:'';position:absolute;top:-25px;left:44px;width:10px;height:10px;background:#fff;box-shadow:-30px 22px 0 -1px #fff,-22px 22px 0 -1px #fff,-14px 22px 0 -1px #fff,-6px 22px 0 -1px #fff}
+.pname{font-family:'Press Start 2P',monospace;font-size:12px;margin-bottom:8px}
+.st{font-size:19px;color:var(--dim)}
+.st.ok{color:var(--green)} .st.mid{color:var(--gold)} .st.new{color:var(--ice)}
+.online{font-size:17px;margin-top:4px}
+.online i{display:inline-block;width:9px;height:9px;margin-right:5px;background:#555}
+.online.on i{background:var(--green);box-shadow:0 0 6px var(--green)}
+.xpbox{margin-top:20px}
+.xplabel{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--gold);margin-bottom:6px}
+.xp{height:20px;border:3px solid var(--line);background:#050810}
+.xp>i{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--green) 0 12px,#24c955 12px 15px);transition:width .8s}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.tile{font:inherit;font-size:20px;text-align:left;padding:9px 10px;background:var(--panel2);color:var(--text);border:2px solid var(--line);cursor:pointer;display:flex;gap:8px;align-items:center;line-height:1.05}
+.tile span{font-size:20px}
+.tile:hover{border-color:var(--ice)}
+.tile.like.on{border-color:var(--green);background:rgba(57,255,106,.16);box-shadow:0 0 10px rgba(57,255,106,.3)}
+.tile.nope.on{border-color:var(--red);background:rgba(255,59,92,.16);box-shadow:0 0 10px rgba(255,59,92,.3)}
+.tile.like.on::after{content:'✔';margin-left:auto;color:var(--green)}
+.tile.nope.on::after{content:'✖';margin-left:auto;color:var(--red)}
+
+input,select,textarea{font-family:'VT323',monospace;font-size:21px;background:#060a14;color:var(--text);border:2px solid var(--line);padding:8px 10px;width:100%;border-radius:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 10px rgba(57,255,106,.3)}
+label{display:block;margin-top:12px;color:var(--dim)}
+label input,label select,label textarea{margin-top:4px;color:var(--text)}
+.item{display:grid;grid-template-columns:1fr 1fr 42px;gap:6px;margin-bottom:8px}
+.item .x{background:var(--panel2);border:2px solid var(--line);color:var(--red);font-size:20px;cursor:pointer}
+@media(max-width:560px){.item{grid-template-columns:1fr 42px}.item .it-link{grid-column:1;grid-row:2}.item .x{grid-row:1/3;grid-column:2}}
+.pin{font-family:'Press Start 2P',monospace;font-size:30px;text-align:center;letter-spacing:14px;width:190px;display:block;margin:8px auto 14px;padding:12px 0 12px 14px}
+.msg{min-height:26px;color:var(--red)}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+.wheelwrap{position:relative;width:min(380px,84vw);aspect-ratio:1;margin:18px auto 8px}
+.wheelwrap canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 0 20px rgba(57,255,106,.3))}
+.pointer{position:absolute;top:-14px;left:50%;transform:translateX(-50%);border-left:17px solid transparent;border-right:17px solid transparent;border-top:34px solid var(--gold);filter:drop-shadow(0 3px 0 #000);z-index:2}
+.cd{position:absolute;inset:0;display:grid;place-items:center;font-family:'Press Start 2P',monospace;font-size:72px;color:var(--gold);text-shadow:4px 4px 0 #000,0 0 20px rgba(255,211,77,.7);pointer-events:none;z-index:3}
+
+.achv{display:flex;gap:16px;align-items:center;border:3px solid var(--gold);background:linear-gradient(90deg,#2b2408,#0f1830);padding:14px 16px;box-shadow:0 0 22px rgba(255,211,77,.28)}
+.achv .trophy{font-size:46px}
+.achv h3{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--gold);margin:0 0 8px}
+.achv .whoami{font-family:'Press Start 2P',monospace;font-size:clamp(18px,5vw,26px);margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:3px 10px;border:2px solid var(--line);font-size:19px}
+.chip.like{border-color:var(--green);color:#c9ffd8}
+.chip.nope{border-color:var(--red);color:#ffc9d3}
+.wl h4{font-family:'Press Start 2P',monospace;font-size:11px;margin:18px 0 8px;color:var(--ice)}
+.wl ul{margin:0;padding-left:22px}
+.wl a{color:var(--green);word-break:break-all}
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-120px);z-index:60;background:var(--panel);border:3px solid var(--gold);padding:10px 16px;
+  font-size:20px;box-shadow:4px 4px 0 #050810;transition:transform .3s;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.loading{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--ice);animation:blink 1s steps(2) infinite}
+.admin{border-style:dashed}
+.admin select{width:auto;min-width:140px}
+</style>
+</head>
+<body>
+<canvas id="snow"></canvas>
+<div id="app">
+  <header>
+    <div class="logo">REALLY <span class="r">SMART</span> GAMERS</div>
+    <div class="sub">SECRET SANTA 2026 <span class="iq">IQ&gt;9000</span></div>
+    <div class="hud">
+      <div class="countdown" id="countdown"></div>
+      <div class="who" id="who"></div>
+      <button class="icon" id="mute" title="Sound on/off">🔊</button>
+    </div>
+  </header>
+  <div id="banner"></div>
+  <main id="screen"><section class="panel center"><div class="loading">CONNECTING TO NORTH POLE SERVERS…</div></section></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ============ SETTINGS (edit these) ============ */
+const CONFIG = {
+  players: ['Nghia', 'Linda', 'Kim', 'Phil'],
+  exchangeDate: '2026-12-25T19:00:00',   // local time of the gift exchange
+  budget: '$30–50',
+  firebase: {
+    databaseURL: 'https://rsg-secret-santa-default-rtdb.firebaseio.com',
+    projectId: 'rsg-secret-santa'
+  }
+};
+/* =============================================== */
+
+const CATS = [
+  ['games','🎮','Video games & gift cards'],
+  ['pc','🖥️','PC & desk setup'],
+  ['controllers','🕹️','Controllers & accessories'],
+  ['audio','🎧','Headsets & audio'],
+  ['merch','🧸','Merch, figures & plushies'],
+  ['clothes','👕','Clothing & hoodies'],
+  ['snacks','🍫','Snacks & treats'],
+  ['drinks','☕','Coffee, tea & drinks'],
+  ['cozy','🛋️','Cozy stuff (blankets, mugs)'],
+  ['gadgets','🔋','Tech gadgets'],
+  ['books','📚','Books, manga & comics'],
+  ['board','🎲','Board & card games'],
+  ['lego','🧱','LEGO & building kits'],
+  ['decor','💡','Room decor & lights'],
+  ['selfcare','🧴','Self-care & grooming'],
+  ['kitchen','🍳','Kitchen & cooking'],
+  ['outdoor','🏕️','Outdoors & sports'],
+  ['digital','📺','Subscriptions & digital'],
+];
+const CAT = Object.fromEntries(CATS.map(c => [c[0], c]));
+
+const params = new URLSearchParams(location.search);
+const ROOM = (params.get('room') || 'rsg-2026').replace(/[^a-z0-9-]/gi, '') || 'rsg-2026';
+const MOCK = params.has('mock') || !CONFIG.firebase.databaseURL;
+const ADMIN = params.has('admin');
+const IDS = CONFIG.players.map(n => n.toLowerCase());
+const NAME = Object.fromEntries(IDS.map((id, i) => [id, CONFIG.players[i]]));
+const PALETTE = ['#39ff6a', '#ff7ad9', '#ffd34d', '#5ee7ff', '#ff9a3c', '#b18cff'];
+const COLOR = Object.fromEntries(IDS.map((id, i) => [id, PALETTE[i % PALETTE.length]]));
+const P = p => `rooms/${ROOM}/${p}`;
+const $ = s => document.querySelector(s);
+const screenEl = $('#screen');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const arr = v => Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []);
+const store = {
+  get(k){ try { const v = localStorage.getItem(k); return v == null ? null : JSON.parse(v); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} },
+};
+
+const S = { me:null, priv:null, players:{}, game:{status:'lobby'}, screen:'loading', leave:null, drawing:false, moving:false, giftee:null, loaded:{p:false,g:false} };
+
+/* ============ DATABASE ============ */
+async function firebaseDB(cfg){
+  const V = '11.0.2';
+  const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
+  const d = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-database.js`);
+  const db = d.getDatabase(initializeApp(cfg));
+  const r = p => d.ref(db, p);
+  return {
+    sub(path, cb){ return d.onValue(r(path), s => cb(s.val())); },
+    set(path, v){ return d.set(r(path), v); },
+    update(path, v){ return d.update(r(path), v); },
+    async get(path){ return (await d.get(r(path))).val(); },
+    async txn(path, fn){ const res = await d.runTransaction(r(path), fn); return { committed: res.committed }; },
+    presence(path){
+      const ref = r(path);
+      const off = d.onValue(r('.info/connected'), s => {
+        if (s.val() === true) d.onDisconnect(ref).set(false).then(() => d.set(ref, true));
+      });
+      return () => { off(); d.onDisconnect(ref).cancel(); d.set(ref, false); };
+    },
+  };
+}
+function mockDB(){
+  const KEY = 'rsg-mock-db';
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } };
+  const subs = new Set();
+  const getAt = (o, path) => path.split('/').filter(Boolean).reduce((a, k) => a == null ? null : (a[k] ?? null), o);
+  const setAt = (o, path, v) => {
+    const ks = path.split('/').filter(Boolean); let a = o;
+    for (let i = 0; i < ks.length - 1; i++) { if (typeof a[ks[i]] !== 'object' || a[ks[i]] === null) a[ks[i]] = {}; a = a[ks[i]]; }
+    if (v === null || v === undefined) delete a[ks.at(-1)]; else a[ks.at(-1)] = JSON.parse(JSON.stringify(v));
+  };
+  const notify = () => { const o = load(); subs.forEach(s => { const v = JSON.stringify(getAt(o, s.path)); if (v !== s.last) { s.last = v; s.cb(JSON.parse(v)); } }); };
+  const save = o => { localStorage.setItem(KEY, JSON.stringify(o)); notify(); };
+  addEventListener('storage', e => { if (e.key === KEY) notify(); });
+  const api = {
+    sub(path, cb){ const s = { path, cb, last: undefined }; subs.add(s); setTimeout(notify, 0); return () => subs.delete(s); },
+    async set(path, v){ const o = load(); setAt(o, path, v); save(o); },
+    async update(path, obj){ const o = load(); for (const [k, v] of Object.entries(obj)) setAt(o, `${path}/${k}`, v); save(o); },
+    async get(path){ return getAt(load(), path); },
+    async txn(path, fn){ const o = load(); const res = fn(getAt(o, path)); if (res === undefined) return { committed:false }; setAt(o, path, res); save(o); return { committed:true }; },
+    presence(path){
+      api.set(path, true);
+      const bye = () => { const o = load(); setAt(o, path, false); localStorage.setItem(KEY, JSON.stringify(o)); };
+      addEventListener('pagehide', bye);
+      return () => { removeEventListener('pagehide', bye); api.set(path, false); };
+    },
+  };
+  return api;
+}
+
+/* ============ CRYPTO (draws are locked to each player's PIN) ============ */
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = buf => { let s = ''; new Uint8Array(buf).forEach(b => s += String.fromCharCode(b)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const RSA = { name:'RSA-OAEP', hash:'SHA-256' };
+async function pinKey(pin, salt){
+  const base = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:250000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function createIdentity(pin){
+  const kp = await crypto.subtle.generateKey({ ...RSA, modulusLength:2048, publicExponent:new Uint8Array([1,0,1]) }, true, ['encrypt','decrypt']);
+  const pub = await crypto.subtle.exportKey('jwk', kp.publicKey);
+  const priv = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const wrapped = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, await pinKey(pin, salt), priv);
+  return { record:{ pub:JSON.stringify(pub), salt:b64(salt), iv:b64(iv), key:b64(wrapped) }, privateKey:kp.privateKey };
+}
+async function unlock(rec, pin){
+  const raw = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(rec.iv) }, await pinKey(pin, unb64(rec.salt)), unb64(rec.key));
+  return crypto.subtle.importKey('pkcs8', raw, RSA, false, ['decrypt']);
+}
+async function sealFor(rec, text){
+  const pub = await crypto.subtle.importKey('jwk', JSON.parse(rec.pub), RSA, false, ['encrypt']);
+  return b64(await crypto.subtle.encrypt({ name:'RSA-OAEP' }, pub, enc.encode(text)));
+}
+async function openSealed(priv, c){ return dec.decode(await crypto.subtle.decrypt({ name:'RSA-OAEP' }, priv, unb64(c))); }
+function randInt(n){ const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+function derange(ids){
+  while (true) {
+    const p = ids.slice();
+    for (let i = p.length - 1; i > 0; i--) { const j = randInt(i + 1); [p[i], p[j]] = [p[j], p[i]]; }
+    if (p.every((x, i) => x !== ids[i])) return p;
+  }
+}
+
+/* ============ SOUND ============ */
+let AC = null, muted = store.get('rsg-muted') === true;
+function ac(){ if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+function tone(f, dur, type = 'square', vol = .05, when = 0){
+  if (muted) return;
+  try {
+    const a = ac(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime + when;
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+  } catch {}
+}
+const sfx = {
+  tick: () => tone(1400, .03, 'square', .035),
+  blip: () => tone(660, .07, 'square', .04),
+  beep: hi => tone(hi ? 988 : 494, .18, 'square', .05),
+  err: () => { tone(200, .12, 'sawtooth', .05); tone(150, .18, 'sawtooth', .05, .1); },
+  win: () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, .22, 'square', .045, i * .09)),
+  join: () => [392, 523, 659].forEach((f, i) => tone(f, .12, 'triangle', .07, i * .07)),
+};
+const muteBtn = $('#mute');
+const paintMute = () => muteBtn.textContent = muted ? '🔇' : '🔊';
+paintMute();
+muteBtn.onclick = () => { muted = !muted; store.set('rsg-muted', muted); paintMute(); if (!muted) sfx.blip(); };
+addEventListener('pointerdown', () => { try { if (!muted) ac(); } catch {} }, { once:true });
+
+/* ============ UI HELPERS ============ */
+let toastTimer;
+function toast(msg, ms = 2600){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+const avatar = id => `<div class="avatar" style="background:${COLOR[id]}">${esc(NAME[id][0].toUpperCase())}</div>`;
+const isReady = p => !!(p && p.lock && p.formDone && p.ready && p.online);
+const readyCount = () => IDS.filter(id => isReady(S.players[id])).length;
+const safeLink = l => (typeof l === 'string' && /^https?:\/\//i.test(l)) ? l : '';
+function fixLink(s){
+  s = (s || '').trim(); if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  try { const u = new URL(s); return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : ''; } catch { return ''; }
+}
+function renderWho(){
+  const el = $('#who');
+  if (!S.me) { el.innerHTML = ''; return; }
+  el.innerHTML = `Playing as <b style="color:${COLOR[S.me]}">${esc(NAME[S.me])}</b> · <button class="linkbtn" id="switchBtn">switch player</button>`;
+  $('#switchBtn').onclick = logout;
+}
+function logout(){
+  S.leave?.(); S.leave = null;
+  store.del(`rsg-login-${ROOM}`);
+  S.me = null; S.priv = null; S.giftee = null;
+  renderWho(); renderPick();
+}
+
+/* countdown */
+function tickCountdown(){
+  const el = $('#countdown');
+  if (!CONFIG.exchangeDate) { el.textContent = ''; return; }
+  const ms = new Date(CONFIG.exchangeDate) - Date.now();
+  if (ms <= 0) { el.innerHTML = '🎄 <b>IT\'S GIFT DAY!</b>'; return; }
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
+  const pad = n => String(n).padStart(2, '0');
+  el.innerHTML = `🎁 Gift exchange in <b>${d}D ${pad(h)}H ${pad(m)}M ${pad(s)}S</b>`;
+}
+tickCountdown(); setInterval(tickCountdown, 1000);
+
+/* ============ SCREENS ============ */
+function renderPick(){
+  S.screen = 'pick';
+  screenEl.innerHTML = `
+  <section class="panel center">
+    <h2>▶ SELECT YOUR PLAYER</h2>
+    <p class="dim">Click your name to join. First time? You'll make a 3-digit PIN.</p>
+    <div class="players">${IDS.map(id => {
+      const p = S.players[id];
+      return `<button class="pcard" data-id="${id}">${avatar(id)}<div class="pname">${esc(NAME[id])}</div>
+        <div class="st ${p?.lock ? 'ok' : 'new'}">${p?.lock ? '🔒 JOINED' : '★ NEW PLAYER'}</div></button>`;
+    }).join('')}</div>
+  </section>`;
+  screenEl.querySelectorAll('.pcard').forEach(b => b.onclick = () => { sfx.blip(); renderPin(b.dataset.id); });
+}
+
+function renderPin(id){
+  S.screen = 'pin';
+  const isNew = !S.players[id]?.lock;
+  screenEl.innerHTML = `
+  <section class="panel center narrow">
+    ${avatar(id)}
+    <h2>${isNew ? '▶ CREATE YOUR PIN' : '▶ ENTER YOUR PIN'}</h2>
+    <p class="dim">${isNew
+      ? `Hi ${esc(NAME[id])}! Pick a 3-digit PIN. You'll need it to come back and see your draw. <b style="color:var(--text)">Remember it:</b> nobody can look it up for you.`
+      : `Welcome back, ${esc(NAME[id])}.`}</p>
+    <form id="pinForm" autocomplete="off">
+      <input class="pin" id="pin1" type="password" inputmode="numeric" maxlength="3" placeholder="···" aria-label="PIN">
+      ${isNew ? `<div class="dim small">Type it again</div><input class="pin" id="pin2" type="password" inputmode="numeric" maxlength="3" placeholder="···" aria-label="Repeat PIN">` : ''}
+      <div class="msg" id="pinMsg"></div>
+      <div class="row center">
+        <button type="button" class="btn ghost" id="backBtn">◀ BACK</button>
+        <button type="submit" class="btn" id="goBtn">${isNew ? 'CREATE ▶' : 'ENTER ▶'}</button>
+      </div>
+    </form>
+  </section>`;
+  const p1 = $('#pin1'), p2 = $('#pin2'), msg = $('#pinMsg'), go = $('#goBtn'), form = $('#pinForm');
+  [p1, p2].forEach(i => i && (i.oninput = () => { i.value = i.value.replace(/\D/g, '').slice(0, 3); msg.textContent = ''; }));
+  p1.focus();
+  $('#backBtn').onclick = renderPick;
+  const fail = text => { msg.textContent = text; sfx.err(); form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); go.disabled = false; go.textContent = isNew ? 'CREATE ▶' : 'ENTER ▶'; };
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const pin = p1.value;
+    if (!/^\d{3}$/.test(pin)) return fail('PIN must be exactly 3 digits.');
+    go.disabled = true; go.textContent = 'LOADING…';
+    try {
+      if (isNew) {
+        if (p2.value !== pin) return fail("PINs don't match. Try again.");
+        const already = await db.get(P(`players/${id}/lock`));
+        if (already) { toast(`${NAME[id]} was just claimed on another device.`); return renderPin(id); }
+        const { record, privateKey } = await createIdentity(pin);
+        await db.update(P(`players/${id}`), { lock: record, ready: false });
+        S.priv = privateKey;
+      } else {
+        try { S.priv = await unlock(S.players[id].lock, pin); }
+        catch { return fail('WRONG PIN'); }
+      }
+      store.set(`rsg-login-${ROOM}`, { id, pin });
+      sfx.join();
+      enter(id);
+    } catch (err) {
+      console.error(err); fail('Something went wrong. Check your connection and try again.');
+    }
+  };
+}
+
+function renderForm(){
+  S.screen = 'form';
+  const p = S.players[S.me] || {};
+  const w = p.wish || {};
+  const W = { likes: arr(w.likes), nope: arr(w.nope), items: arr(w.items).map(i => ({ text: i.text || '', link: i.link || '' })), shirt: w.shirt || '', sizes: w.sizes || '', notes: w.notes || '' };
+  if (!W.items.length) W.items.push({ text:'', link:'' });
+  const drawn = S.game?.status === 'drawn';
+  screenEl.innerHTML = `
+  <section class="panel">
+    <h2>▶ CHARACTER SHEET: ${esc(NAME[S.me].toUpperCase())}</h2>
+    <p class="dim">Fill this out so your Secret Santa knows what to get you. Budget: <span class="badge">${esc(CONFIG.budget)}</span><br>You can edit it any time, even after the draw.</p>
+  </section>
+  <section class="panel"><h2>♥ STUFF I'D LIKE</h2><p class="dim">Tap every category you'd be happy to get.</p><div class="tiles" id="likes"></div></section>
+  <section class="panel"><h2>★ SPECIFIC ITEMS &amp; LINKS</h2><p class="dim">Got something exact in mind? Add it here. Links are optional.</p>
+    <div id="items"></div><button type="button" class="btn ghost small" id="addItem">+ ADD ANOTHER</button></section>
+  <section class="panel"><h2>✖ PLEASE, NO</h2><p class="dim">Tap anything you do NOT want.</p><div class="tiles" id="nope"></div></section>
+  <section class="panel"><h2>◆ SIZES &amp; NOTES (OPTIONAL)</h2>
+    <label>Shirt / hoodie size
+      <select id="shirt">${['','XS','S','M','L','XL','2XL','3XL'].map(s => `<option value="${s}" ${W.shirt === s ? 'selected' : ''}>${s || '—'}</option>`).join('')}</select></label>
+    <label>Other sizes (shoes, gloves, etc.)<input id="sizes" maxlength="120" value="${esc(W.sizes)}" placeholder="e.g. shoe size 10"></label>
+    <label>Anything else your Santa should know?<textarea id="notes" rows="3" maxlength="500" placeholder="Allergies, favorite colors, games you already own…">${esc(W.notes)}</textarea></label>
+  </section>
+  <div class="row center">
+    ${p.formDone ? `<button type="button" class="btn ghost" id="cancelBtn">◀ BACK</button>` : ''}
+    <button type="button" class="btn" id="saveBtn">${p.formDone ? 'SAVE CHANGES ▶' : 'SAVE &amp; ENTER LOBBY ▶'}</button>
+  </div>`;
+
+  const drawTiles = () => ['likes', 'nope'].forEach(kind => {
+    $('#' + kind).innerHTML = CATS.map(([k, e, l]) =>
+      `<button type="button" class="tile ${kind === 'likes' ? 'like' : 'nope'} ${W[kind].includes(k) ? 'on' : ''}" data-k="${k}" data-kind="${kind}"><span>${e}</span>${esc(l)}</button>`).join('');
+  });
+  ['likes', 'nope'].forEach(kind => $('#' + kind).onclick = e => {
+    const t = e.target.closest('.tile'); if (!t) return;
+    const k = t.dataset.k, other = kind === 'likes' ? 'nope' : 'likes';
+    W[kind] = W[kind].includes(k) ? W[kind].filter(x => x !== k) : [...W[kind], k];
+    W[other] = W[other].filter(x => x !== k);
+    sfx.blip(); drawTiles();
+  });
+  const drawItems = () => {
+    $('#items').innerHTML = W.items.map((it, i) => `
+      <div class="item" data-i="${i}">
+        <input class="it-text" maxlength="120" placeholder="Item, e.g. Logitech G305 mouse" value="${esc(it.text)}">
+        <input class="it-link" maxlength="400" placeholder="Link (optional)" value="${esc(it.link)}">
+        <button type="button" class="x" title="Remove">✕</button>
+      </div>`).join('');
+  };
+  $('#items').oninput = e => {
+    const row = e.target.closest('.item'); if (!row) return;
+    const it = W.items[+row.dataset.i];
+    if (e.target.classList.contains('it-text')) it.text = e.target.value; else it.link = e.target.value;
+  };
+  $('#items').onclick = e => {
+    if (!e.target.classList.contains('x')) return;
+    W.items.splice(+e.target.closest('.item').dataset.i, 1);
+    if (!W.items.length) W.items.push({ text:'', link:'' });
+    drawItems();
+  };
+  $('#addItem').onclick = () => { if (W.items.length >= 15) return toast('15 items max!'); W.items.push({ text:'', link:'' }); drawItems(); screenEl.querySelectorAll('.it-text')[W.items.length - 1].focus(); };
+  drawTiles(); drawItems();
+  if ($('#cancelBtn')) $('#cancelBtn').onclick = afterForm;
+
+  $('#saveBtn').onclick = async () => {
+    const items = W.items.map(it => ({ text: (it.text || '').trim(), link: fixLink(it.link) })).filter(it => it.text || it.link).slice(0, 15);
+    if (!W.likes.length && !items.length) { sfx.err(); return toast('Pick at least one category, or add an item!'); }
+    const wish = { likes: W.likes, nope: W.nope, items, shirt: $('#shirt').value, sizes: $('#sizes').value.trim(), notes: $('#notes').value.trim() };
+    const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'SAVING…';
+    try {
+      await db.update(P(`players/${S.me}`), { wish, formDone: true });
+      sfx.join(); toast('✔ Wishlist saved!');
+      afterForm();
+    } catch (err) { console.error(err); btn.disabled = false; btn.textContent = 'TRY AGAIN'; toast('Could not save. Check your connection.'); }
+  };
+}
+function afterForm(){ if (S.game?.status === 'drawn') goAfterDraw(); else renderLobby(); }
+
+function renderLobby(){
+  S.screen = 'lobby';
+  const me = S.players[S.me] || {};
+  const n = readyCount(), total = IDS.length;
+  const slot = id => {
+    const p = S.players[id] || {};
+    let st, cls = '';
+    if (!p.lock) st = 'NOT JOINED YET';
+    else if (!p.formDone) { st = 'FILLING OUT WISHLIST…'; cls = 'mid'; }
+    else if (!p.ready) { st = 'WISHLIST DONE'; cls = 'mid'; }
+    else { st = 'READY ✔'; cls = 'ok'; }
+    const on = p.lock ? `<div class="online ${p.online ? 'on' : ''}"><i></i>${p.online ? 'IN LOBBY' : 'AWAY'}</div>` : '';
+    return `<div class="pcard ${isReady(p) ? 'ready' : ''} ${id === S.me ? 'me' : ''}">${avatar(id)}<div class="pname">${esc(NAME[id])}</div><div class="st ${cls}">${st}</div>${on}</div>`;
+  };
+  const waiting = IDS.filter(id => !isReady(S.players[id])).map(id => NAME[id]);
+  screenEl.innerHTML = `
+  <section class="panel">
+    <h2>▶ LOBBY</h2>
+    <p class="dim">The wheel spins when all ${total} players have finished their wishlist, are here in the lobby, and hit <b style="color:var(--green)">READY</b>.</p>
+    <div class="players">${IDS.map(slot).join('')}</div>
+    <div class="xpbox"><div class="xplabel">PLAYERS READY ${n}/${total}</div><div class="xp"><i style="width:${n / total * 100}%"></i></div></div>
+    <p class="center dim small">${n === total ? '<span style="color:var(--gold)">ALL PLAYERS READY. SPINNING UP THE WHEEL…</span>' : `Waiting on: ${waiting.map(esc).join(', ')}`}</p>
+    <div class="row center">
+      <button class="btn ${me.ready ? 'red' : ''}" id="readyBtn">${me.ready ? 'CANCEL READY' : 'READY UP'}</button>
+      <button class="btn ghost" id="editBtn">EDIT MY WISHLIST</button>
+    </div>
+  </section>
+  ${adminHTML()}`;
+  $('#readyBtn').onclick = async () => {
+    try { if (!muted) ac(); } catch {}
+    const r = !(S.players[S.me]?.ready);
+    r ? sfx.join() : sfx.blip();
+    await db.update(P(`players/${S.me}`), { ready: r });
+  };
+  $('#editBtn').onclick = async () => {
+    if (S.players[S.me]?.ready) await db.update(P(`players/${S.me}`), { ready: false });
+    renderForm();
+  };
+  bindAdmin();
+}
+
+async function startSpin(){
+  S.screen = 'spin';
+  const others = IDS.filter(id => id !== S.me);
+  const segs = [];
+  while (segs.length < 10) segs.push(...others);
+  screenEl.innerHTML = `
+  <section class="panel center">
+    <h2>▶ THE WHEEL OF DESTINY</h2>
+    <div class="wheelwrap"><div class="pointer"></div><canvas id="wheel" width="760" height="760"></canvas><div class="cd" id="cd"></div></div>
+    <p class="dim" id="spinMsg">Everyone's in. Here we go…</p>
+  </section>`;
+  const c = $('#wheel');
+  try { await document.fonts.load('22px "Press Start 2P"'); } catch {}
+  drawWheel(c, segs);
+  for (const n of [3, 2, 1]) { if (S.screen !== 'spin') return; $('#cd').textContent = n; sfx.beep(false); await sleep(850); }
+  if (S.screen !== 'spin') return;
+  $('#cd').textContent = ''; sfx.beep(true);
+  $('#spinMsg').textContent = 'Spinning…';
+  const targets = segs.map((s, i) => s === S.giftee ? i : -1).filter(i => i >= 0);
+  const k = targets[randInt(targets.length)];
+  const seg = 360 / segs.length;
+  const total = 360 * 7 - (k + 0.5) * seg + (Math.random() - 0.5) * seg * 0.6;
+  await spinTo(c, total, 6500, seg);
+  if (S.screen !== 'spin') return;
+  store.set(seenKey(), true);
+  sfx.win();
+  const r = c.getBoundingClientRect();
+  burst(r.left + r.width / 2, r.top + r.height * 0.15);
+  $('#spinMsg').innerHTML = `<b style="color:${COLOR[S.giftee]}">${esc(NAME[S.giftee].toUpperCase())}!</b>`;
+  await sleep(1500);
+  if (S.screen === 'spin') renderResult();
+}
+function drawWheel(c, segs){
+  const x = c.getContext('2d'), W = c.width, cx = W / 2, R = W / 2 - 18;
+  const a = 2 * Math.PI / segs.length;
+  const fills = ['#c8102e', '#0f7a33', '#1a2a66', '#a8780a'];
+  x.clearRect(0, 0, W, W);
+  x.fillStyle = '#050810'; x.beginPath(); x.arc(cx, cx, W / 2 - 2, 0, 7); x.fill();
+  segs.forEach((id, i) => {
+    const a0 = -Math.PI / 2 + i * a;
+    x.beginPath(); x.moveTo(cx, cx); x.arc(cx, cx, R, a0, a0 + a); x.closePath();
+    x.fillStyle = fills[i % fills.length]; x.fill();
+    x.lineWidth = 5; x.strokeStyle = '#050810'; x.stroke();
+    x.save(); x.translate(cx, cx); x.rotate(a0 + a / 2);
+    x.font = '22px "Press Start 2P"'; x.textAlign = 'right'; x.textBaseline = 'middle';
+    x.fillStyle = '#000'; x.fillText(NAME[id].toUpperCase(), R - 26 + 3, 3);
+    x.fillStyle = '#fff'; x.fillText(NAME[id].toUpperCase(), R - 26, 0);
+    x.restore();
+  });
+  for (let i = 0; i < 30; i++) {
+    const t = i / 30 * 2 * Math.PI;
+    x.beginPath(); x.arc(cx + Math.cos(t) * (W / 2 - 9), cx + Math.sin(t) * (W / 2 - 9), 5, 0, 7);
+    x.fillStyle = i % 2 ? '#ffd34d' : '#ffffff'; x.fill();
+  }
+  x.beginPath(); x.arc(cx, cx, 58, 0, 7); x.fillStyle = '#050810'; x.fill();
+  x.lineWidth = 6; x.strokeStyle = '#39ff6a'; x.stroke();
+  x.fillStyle = '#39ff6a'; x.font = '24px "Press Start 2P"'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('RSG', cx + 2, cx + 3);
+}
+function spinTo(c, total, dur, seg){
+  return new Promise(res => {
+    const t0 = performance.now(); let last = 0;
+    const ease = t => 1 - Math.pow(1 - t, 4);
+    const f = now => {
+      const t = Math.min(1, (now - t0) / dur), ang = total * ease(t);
+      c.style.transform = `rotate(${ang}deg)`;
+      const tk = Math.floor(ang / seg); if (tk !== last) { last = tk; sfx.tick(); }
+      t < 1 ? requestAnimationFrame(f) : res();
+    };
+    requestAnimationFrame(f);
+  });
+}
+
+function renderResult(){
+  S.screen = 'result';
+  const g = S.giftee;
+  screenEl.innerHTML = `
+  <section class="panel gold">
+    <div class="achv"><div class="trophy">🏆</div><div>
+      <h3>ACHIEVEMENT UNLOCKED</h3>
+      <div class="dim">You are the Secret Santa for</div>
+      <div class="whoami" style="color:${COLOR[g]}">${esc(NAME[g].toUpperCase())}</div>
+    </div></div>
+    <p class="dim">🤫 Keep it secret. Budget: <span class="badge">${esc(CONFIG.budget)}</span><br>Their wishlist below updates live if they change it.</p>
+    <div id="giftee" class="wl"></div>
+    <div class="row center">
+      <button class="btn ghost" id="replayBtn">↻ REPLAY SPIN</button>
+      <button class="btn ghost" id="editBtn">EDIT MY WISHLIST</button>
+    </div>
+  </section>
+  ${adminHTML()}`;
+  renderGiftee();
+  $('#replayBtn').onclick = startSpin;
+  $('#editBtn').onclick = renderForm;
+  bindAdmin();
+}
+function renderGiftee(){
+  const el = $('#giftee'); if (!el || !S.giftee) return;
+  const w = S.players[S.giftee]?.wish || {};
+  const likes = arr(w.likes).filter(k => CAT[k]), nope = arr(w.nope).filter(k => CAT[k]), items = arr(w.items);
+  const chip = (k, cls) => `<span class="chip ${cls}">${CAT[k][1]} ${esc(CAT[k][2])}</span>`;
+  el.innerHTML = `
+    <h4>♥ ${esc(NAME[S.giftee].toUpperCase())} WOULD LIKE</h4>
+    ${likes.length ? `<div class="chips">${likes.map(k => chip(k, 'like')).join('')}</div>` : '<div class="dim">No categories picked.</div>'}
+    <h4>★ SPECIFIC ITEMS</h4>
+    ${items.length ? `<ul>${items.map(it => { const l = safeLink(it.link); return `<li>${esc(it.text || 'Link')}${l ? ` <a href="${esc(l)}" target="_blank" rel="noopener noreferrer">[open link]</a>` : ''}</li>`; }).join('')}</ul>` : '<div class="dim">Nothing specific listed.</div>'}
+    <h4>✖ PLEASE, NO</h4>
+    ${nope.length ? `<div class="chips">${nope.map(k => chip(k, 'nope')).join('')}</div>` : '<div class="dim">Nothing off-limits.</div>'}
+    ${(w.shirt || w.sizes) ? `<h4>◆ SIZES</h4><div>${w.shirt ? `Shirt / hoodie: <b>${esc(w.shirt)}</b>` : ''}${w.shirt && w.sizes ? ' · ' : ''}${esc(w.sizes || '')}</div>` : ''}
+    ${w.notes ? `<h4>✉ NOTES</h4><div style="white-space:pre-wrap">${esc(w.notes)}</div>` : ''}`;
+}
+
+/* admin (open the page with ?admin at the end of the link) */
+function adminHTML(){
+  if (!ADMIN) return '';
+  return `<section class="panel admin">
+    <h2>▶ ADMIN TOOLS</h2>
+    <p class="dim small">Emergency use only. These never show anyone's draw.</p>
+    <div class="row"><select id="adPlayer">${IDS.map(id => `<option value="${id}">${esc(NAME[id])}</option>`).join('')}</select>
+      <button class="btn ghost small" id="adPin">RESET THIS PLAYER'S PIN</button></div>
+    <div class="row"><button class="btn red small" id="adRedo">REDO THE WHOLE DRAW</button></div>
+  </section>`;
+}
+function bindAdmin(){
+  if (!ADMIN) return;
+  $('#adPin').onclick = async () => {
+    const id = $('#adPlayer').value;
+    const drawn = S.game?.status === 'drawn';
+    if (!confirm(`Reset ${NAME[id]}'s PIN? Their wishlist is kept. They'll make a new PIN next time they open the page.${drawn ? '\n\nThe draw already happened, so they will NOT be able to see who they drew. You would need to redo the whole draw.' : ''}`)) return;
+    await db.update(P(`players/${id}`), { lock: null, ready: false });
+    toast(`${NAME[id]}'s PIN was reset.`);
+  };
+  $('#adRedo').onclick = async () => {
+    if (!confirm('Redo the whole draw? Everyone goes back to the lobby and has to hit READY again. The old draw is thrown away.')) return;
+    const upd = {}; IDS.forEach(id => upd[`players/${id}/ready`] = false);
+    upd.game = { status: 'lobby' };
+    await db.update(P('').replace(/\/$/, ''), upd);
+    toast('Draw reset. Everyone back to the lobby!');
+  };
+}
+
+/* ============ GAME FLOW ============ */
+const seenKey = () => `rsg-seen-${ROOM}-${S.me}-${S.game?.drawnAt}`;
+async function goAfterDraw(){
+  if (S.moving) return;
+  S.moving = true;
+  try {
+    const c = S.game?.seal?.[S.me];
+    let g = null;
+    if (c) { try { g = await openSealed(S.priv, c); } catch {} }
+    if (!g || !IDS.includes(g)) { toast("Your draw couldn't be unlocked. Ask Nghia to redo the draw.", 5000); renderLobby(); return; }
+    S.giftee = g;
+    store.get(seenKey()) ? renderResult() : startSpin();
+  } finally { S.moving = false; }
+}
+async function enter(id){
+  S.me = id;
+  S.leave = db.presence(P(`players/${id}/online`));
+  renderWho();
+  const p = S.players[id] || {};
+  if (!p.formDone) return renderForm();
+  if (S.game?.status === 'drawn') return goAfterDraw();
+  renderLobby();
+}
+async function maybeDraw(){
+  if (!S.me || !S.priv || S.drawing || S.game?.status === 'drawn') return;
+  if (readyCount() !== IDS.length) return;
+  S.drawing = true;
+  try {
+    await sleep(200 + Math.random() * 900);
+    if (S.game?.status === 'drawn' || readyCount() !== IDS.length) return;
+    const perm = derange(IDS);
+    const seal = {};
+    for (let i = 0; i < IDS.length; i++) seal[IDS[i]] = await sealFor(S.players[IDS[i]].lock, perm[i]);
+    await db.txn(P('game'), cur => {
+      if (cur && cur.status === 'drawn') return;
+      return { status: 'drawn', drawnAt: Date.now(), seal };
+    });
+  } catch (e) { console.error('draw failed', e); }
+  finally { S.drawing = false; }
+}
+function handleGame(){
+  if (!S.me || !S.priv) return;
+  if (S.game?.status === 'drawn') {
+    if (S.screen === 'lobby') goAfterDraw();
+  } else if (S.screen === 'result' || S.screen === 'spin') {
+    S.giftee = null; renderLobby();
+  }
+}
+
+let booted = false;
+async function onData(){
+  updateSnowLevel();
+  if (!S.loaded.p || !S.loaded.g) return;
+  if (!booted) {
+    booted = true;
+    const saved = store.get(`rsg-login-${ROOM}`);
+    if (saved && S.players[saved.id]?.lock) {
+      try { S.priv = await unlock(S.players[saved.id].lock, saved.pin); return enter(saved.id); } catch { store.del(`rsg-login-${ROOM}`); }
+    }
+    return renderPick();
+  }
+  if (S.me && S.priv && !S.players[S.me]?.lock) { toast('Your PIN was reset by the admin.', 4000); return logout(); }
+  if (S.me && S.leave && S.players[S.me] && !S.players[S.me].online) db.set(P(`players/${S.me}/online`), true); // another tab of mine closed
+  if (S.screen === 'pick') renderPick();
+  else if (S.screen === 'lobby') renderLobby();
+  else if (S.screen === 'result') renderGiftee();
+  handleGame();
+  maybeDraw();
+}
+
+let db;
+(async function boot(){
+  if (!window.crypto?.subtle) { screenEl.innerHTML = `<section class="panel center">This page needs to be opened from its https:// link.</section>`; return; }
+  if (MOCK) $('#banner').innerHTML = `<div class="banner">TEST MODE · data is only saved in this browser</div>`;
+  try { db = MOCK ? mockDB() : await firebaseDB(CONFIG.firebase); }
+  catch (e) { console.error(e); screenEl.innerHTML = `<section class="panel center">Couldn't reach the server. Refresh to try again.</section>`; return; }
+  setTimeout(() => { if (!booted) screenEl.innerHTML = `<section class="panel center"><div class="loading">STILL CONNECTING…</div><p class="dim">If this doesn't load, try refreshing.</p></section>`; }, 10000);
+  db.sub(P('players'), v => { S.players = v || {}; S.loaded.p = true; onData(); });
+  db.sub(P('game'), v => { S.game = v || { status: 'lobby' }; S.loaded.g = true; onData(); });
+})();
+
+/* ============ SNOW (piles up as players get ready) ============ */
+const snow = { c: $('#snow'), flakes: [], parts: [], h: null, cw: 4, max: 34, target: 34 };
+const sx = snow.c.getContext('2d');
+function snowResize(){
+  snow.c.width = innerWidth; snow.c.height = innerHeight;
+  const cols = Math.ceil(innerWidth / snow.cw) + 1;
+  const old = snow.h;
+  snow.h = new Float32Array(cols);
+  for (let i = 0; i < cols; i++) snow.h[i] = old && old[i] != null ? old[i] : 8 + Math.sin(i / 9) * 4 + Math.random() * 3;
+  const want = Math.min(180, Math.floor(innerWidth / 7));
+  while (snow.flakes.length < want) snow.flakes.push(newFlake(true));
+  snow.flakes.length = want;
+}
+function newFlake(anywhere){
+  return { x: Math.random() * innerWidth, y: anywhere ? Math.random() * innerHeight : -6, s: Math.random() < .25 ? 4 : (Math.random() < .5 ? 3 : 2),
+    vy: .5 + Math.random() * 1.1, ph: Math.random() * 6.28, sw: .3 + Math.random() * .6 };
+}
+function updateSnowLevel(){
+  const n = readyCount(), done = IDS.filter(id => S.players[id]?.formDone).length;
+  snow.target = 30 + done * 10 + n * 22 + (S.game?.status === 'drawn' ? 30 : 0);
+  document.documentElement.style.setProperty('--cap', `${6 + done * 2 + n * 4}px`);
+}
+function burst(x, y){
+  const cols = ['#39ff6a', '#ff3b5c', '#ffd34d', '#ffffff', '#5ee7ff'];
+  for (let i = 0; i < 140; i++) {
+    const a = Math.random() * 6.28, v = 3 + Math.random() * 7;
+    snow.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 4, life: 90 + Math.random() * 60, c: cols[i % cols.length], s: Math.random() < .5 ? 4 : 6 });
+  }
+}
+function snowFrame(t){
+  const W = snow.c.width, H = snow.c.height, h = snow.h, cw = snow.cw;
+  snow.max += (snow.target - snow.max) * .01;
+  sx.clearRect(0, 0, W, H);
+  sx.fillStyle = 'rgba(235,246,255,.85)';
+  for (const f of snow.flakes) {
+    f.y += f.vy; f.x += Math.sin(t / 900 + f.ph) * f.sw;
+    if (f.x < 0) f.x += W; if (f.x > W) f.x -= W;
+    const ci = Math.max(0, Math.min(h.length - 1, Math.floor(f.x / cw)));
+    if (f.y >= H - h[ci]) {
+      if (h[ci] < snow.max) h[ci] += f.s * .35;
+      Object.assign(f, newFlake(false));
+      continue;
+    }
+    sx.fillRect(Math.round(f.x), Math.round(f.y), f.s, f.s);
+  }
+  for (let i = 0; i < h.length - 1; i++) {
+    const d = h[i] - h[i + 1];
+    if (d > 6) { h[i] -= .5; h[i + 1] += .5; } else if (d < -6) { h[i] += .5; h[i + 1] -= .5; }
+    if (h[i] > snow.max + 2) h[i] -= .3;
+  }
+  sx.fillStyle = '#8fbfe0';
+  for (let i = 0; i < h.length; i++) { const y = Math.round(h[i] / 4) * 4; sx.fillRect(i * cw, H - y, cw, y); }
+  sx.fillStyle = '#eef8ff';
+  for (let i = 0; i < h.length; i++) { const y = Math.round(h[i] / 4) * 4 - 4; if (y > 0) sx.fillRect(i * cw, H - y, cw, y); }
+  for (let i = snow.parts.length - 1; i >= 0; i--) {
+    const p = snow.parts[i];
+    p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .99; p.life--;
+    if (p.life <= 0 || p.y > H) { snow.parts.splice(i, 1); continue; }
+    sx.fillStyle = p.c; sx.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
+  }
+  requestAnimationFrame(snowFrame);
+}
+addEventListener('resize', snowResize);
+snowResize(); requestAnimationFrame(snowFrame);
+</script>
+</body>
+</html>
